@@ -9,24 +9,33 @@ from image_to_text_full_v3 import (
     encode_lossy_nlp_to_text,   decode_lossy_nlp_text_to_proxy_image,
 )
 
+from fastapi import Header
+
 API_KEY = os.environ.get("IMAGE_TEXT_API_KEY", "change-me")
 
-def require_key(x_api_key: str = None):
+def require_key(x_api_key: Optional[str] = Header(None)):
     if x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Invalid or missing X-API-Key")
 
 app = FastAPI(title="Image↔Text Manifest API")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # tighten later if you want
+    allow_origins=["*"],      # sau này có thể siết về ["https://chat.openai.com"]
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*"],      # hoặc liệt kê cụ thể: ["X-API-Key", "Content-Type"]
 )
 
-@app.get("/")
+# Health (GET/HEAD) để pass Render check
+@app.get("/", include_in_schema=False)
 def root():
     return {"ok": True, "service": "img2txt", "endpoints": ["/encode/*", "/decode/*"]}
+
+@app.head("/", include_in_schema=False)
+def root_head():
+    return Response(status_code=200)
+
 
 # ---------- LOSSLESS ----------
 @app.post("/encode/lossless", dependencies=[Depends(require_key)])
